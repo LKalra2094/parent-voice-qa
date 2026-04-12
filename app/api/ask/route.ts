@@ -5,6 +5,30 @@ async function getGroqClient() {
   return new Groq({ apiKey: process.env.GROQ_API_KEY });
 }
 
+async function searchExa(query: string): Promise<string> {
+  if (!process.env.EXA_API_KEY) return "";
+
+  try {
+    const Exa = (await import("exa-js")).default;
+    const exa = new Exa(process.env.EXA_API_KEY);
+
+    const results = await exa.searchAndContents(query, {
+      numResults: 3,
+      text: { maxCharacters: 500 },
+      type: "auto",
+    });
+
+    if (!results.results.length) return "";
+
+    return results.results
+      .map((r: { title: string | null; text: string | null }) => `${r.title || "Result"}: ${r.text || ""}`)
+      .join("\n\n");
+  } catch (err) {
+    console.error("Exa search error:", err);
+    return "";
+  }
+}
+
 const SYSTEM_PROMPT = `You are a warm, friendly, and knowledgeable assistant answering questions from young children (ages 4-10).
 
 Rules:
@@ -14,15 +38,32 @@ Rules:
 - Never discuss violence, adult topics, or anything scary
 - If a question is inappropriate, gently redirect: "That's a great question! How about we talk about something fun instead?"
 - Never pretend to be the child's parent or family member
-- Use fun comparisons and examples kids can relate to`;
+- Use fun comparisons and examples kids can relate to
+- If search results are provided, use them to give accurate, up-to-date answers — but still explain in simple kid-friendly language`;
+
+interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const audioFile = formData.get("audio") as File | null;
+    const historyRaw = formData.get("history") as string | null;
 
     if (!audioFile) {
       return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
+    }
+
+    // Parse conversation history (sent from frontend)
+    let history: ConversationMessage[] = [];
+    if (historyRaw) {
+      try {
+        history = JSON.parse(historyRaw);
+      } catch {
+        console.warn("Invalid history JSON, ignoring");
+      }
     }
 
     // Step 1: Speech-to-Text via ElevenLabs Scribe
@@ -48,13 +89,35 @@ export async function POST(req: NextRequest) {
     const transcribedText = sttResult.text;
     console.log("Transcribed:", transcribedText);
 
-    // Step 2: LLM via Groq (Llama 3 70B)
+    // Step 2: Web search via Exa (runs in parallel with nothing — just await it)
+    const searchContext = await searchExa(transcribedText);
+    if (searchContext) {
+      console.log("Exa search returned results");
+    }
+
+    // Step 3: LLM via Groq (Llama 3.3 70B) — with history + search context
     const groq = await getGroqClient();
+
+    // Build message list: system → history → current question
+    const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+    ];
+
+    // Add conversation history (last 10 messages max to stay within context limits)
+    const recentHistory = history.slice(-10);
+    for (const msg of recentHistory) {
+      messages.push({ role: msg.role, content: msg.content });
+    }
+
+    // Add current question, with search context if available
+    const userMessage = searchContext
+      ? `${transcribedText}\n\n[Search results for reference — use these to give an accurate answer, but explain simply for a child:]\n${searchContext}`
+      : transcribedText;
+
+    messages.push({ role: "user", content: userMessage });
+
     const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: transcribedText },
-      ],
+      messages,
       model: "llama-3.3-70b-versatile",
       temperature: 0.7,
       max_tokens: 200,
@@ -63,7 +126,7 @@ export async function POST(req: NextRequest) {
     const answerText = chatCompletion.choices[0]?.message?.content || "Hmm, I'm not sure about that one!";
     console.log("Answer:", answerText);
 
-    // Step 3: Text-to-Speech via ElevenLabs
+    // Step 4: Text-to-Speech via ElevenLabs
     const voiceId = process.env.ELEVENLABS_VOICE_ID!;
     const ttsResponse = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
