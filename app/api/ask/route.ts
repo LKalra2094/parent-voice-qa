@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+function getGroqClient() {
+  return new Groq({ apiKey: process.env.GROQ_API_KEY });
+}
 
 const SYSTEM_PROMPT = `You are a warm, friendly, and knowledgeable assistant answering questions from young children (ages 4-10).
 
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
     console.log("Transcribed:", transcribedText);
 
     // Step 2: LLM via Groq (Llama 3 70B)
-    const chatCompletion = await groq.chat.completions.create({
+    const chatCompletion = await getGroqClient().chat.completions.create({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: transcribedText },
