@@ -111,7 +111,7 @@ export default function Home() {
           <option value="">Select a child</option>
           {kids.map((kid) => (
             <option key={kid.id} value={kid.id}>
-              {kid.name}
+              {kid.name}{kid.age !== null ? ` (age ${kid.age})` : ""}
             </option>
           ))}
         </select>
