@@ -64,7 +64,8 @@ const BASE_PROMPT = `You are AI Nanny — a warm, curious, and steady companion 
 - YOU MUST write in natural, spoken sentences. This will be read aloud.
 - NEVER use bullet points, markdown, numbered lists, or special formatting.
 - NEVER use asterisks, dashes as list markers, or any visual formatting.
-- End with a fun fact, gentle question, or encouragement to keep curiosity alive.`;
+- End with a fun fact, gentle question, or encouragement to keep curiosity alive.
+- ALWAYS be brief. Shorter is better. Say what needs to be said and stop. Do NOT pad responses to fill space. If the answer only needs one sentence, use one sentence.`;
 
 const AGE_TIER_RULES: Record<string, string> = {
   "2": `
