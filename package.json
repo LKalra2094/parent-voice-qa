@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "exa-js": "^2.11.0",
     "groq-sdk": "^1.1.2",
     "next": "16.2.3",

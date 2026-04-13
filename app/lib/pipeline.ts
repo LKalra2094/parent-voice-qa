@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logInteraction } from "@/app/lib/db";
 
 export async function getGroqClient() {
   const Groq = (await import("groq-sdk")).default;
@@ -80,8 +81,10 @@ export interface ConversationMessage {
  */
 export async function generateAnswer(
   transcribedText: string,
-  history: ConversationMessage[]
+  history: ConversationMessage[],
+  opts?: { kid_id?: string; conversation_id?: string }
 ): Promise<NextResponse> {
+  const startTime = Date.now();
   // Step 1: Web search via Exa
   const searchContext = await searchExa(transcribedText);
   if (searchContext) {
@@ -145,6 +148,17 @@ export async function generateAnswer(
   }
 
   const audioBuffer = await ttsResponse.arrayBuffer();
+
+  // Log interaction async — don't block audio response
+  const latency = Date.now() - startTime;
+  logInteraction({
+    kid_id: opts?.kid_id,
+    conversation_id: opts?.conversation_id,
+    question: transcribedText,
+    answer: answerText,
+    search_context: searchContext || undefined,
+    response_latency_ms: latency,
+  }).catch((err) => console.error("Failed to log interaction:", err));
 
   return new NextResponse(audioBuffer, {
     headers: {
