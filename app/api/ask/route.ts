@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const audioFile = formData.get("audio") as File | null;
     const historyRaw = formData.get("history") as string | null;
+    const kidId = formData.get("kid_id") as string | null;
+    const conversationId = formData.get("conversation_id") as string | null;
 
     if (!audioFile) {
       return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
@@ -53,7 +55,10 @@ export async function POST(req: NextRequest) {
     console.log("Transcribed:", transcribedText);
 
     // Run the rest of the pipeline (Exa → LLM → TTS)
-    return generateAnswer(transcribedText, history);
+    return generateAnswer(transcribedText, history, {
+      kid_id: kidId || undefined,
+      conversation_id: conversationId || undefined,
+    });
   } catch (error) {
     console.error("Pipeline error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
