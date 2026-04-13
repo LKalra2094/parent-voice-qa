@@ -6,7 +6,8 @@ export async function POST() {
     await initSchema();
     return NextResponse.json({ ok: true, message: "Schema initialized" });
   } catch (error) {
-    console.error("Schema init failed:", error);
-    return NextResponse.json({ error: "Schema init failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Schema init failed:", message);
+    return NextResponse.json({ error: "Schema init failed", detail: message }, { status: 500 });
   }
 }
