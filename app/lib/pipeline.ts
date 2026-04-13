@@ -144,12 +144,12 @@ function getAgeTier(age: number | null): AgeTier {
 
 function getMaxTokens(tier: AgeTier): number {
   switch (tier) {
-    case "2": return 60;
-    case "4": return 80;
-    case "6": return 120;
-    case "8": return 150;
-    case "10": return 200;
-    case "12": return 250;
+    case "2": return 30;
+    case "4": return 50;
+    case "6": return 75;
+    case "8": return 100;
+    case "10": return 130;
+    case "12": return 170;
   }
 }
 
