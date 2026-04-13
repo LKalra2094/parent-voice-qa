@@ -49,6 +49,11 @@ export async function listKids() {
   return sql()`SELECT * FROM kids ORDER BY created_at`;
 }
 
+export async function getKidAge(kidId: string): Promise<number | null> {
+  const rows = await sql()`SELECT age FROM kids WHERE id = ${kidId}`;
+  return rows[0]?.age ?? null;
+}
+
 export async function logInteraction(data: {
   kid_id?: string;
   conversation_id?: string;

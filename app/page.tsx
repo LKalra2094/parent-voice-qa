@@ -21,7 +21,7 @@ export default function Home() {
 
   useEffect(() => {
     fetch("/api/kids").then((r) => r.json()).then((data) => {
-      if (Array.isArray(data)) setKids(data);
+      if (Array.isArray(data)) setKids(data.sort((a: Kid, b: Kid) => (a.age ?? 0) - (b.age ?? 0)));
     });
   }, []);
 
@@ -111,7 +111,7 @@ export default function Home() {
           <option value="">Select a child</option>
           {kids.map((kid) => (
             <option key={kid.id} value={kid.id}>
-              {kid.name}
+              {kid.name}{kid.age !== null ? ` (age ${kid.age})` : ""}
             </option>
           ))}
         </select>
